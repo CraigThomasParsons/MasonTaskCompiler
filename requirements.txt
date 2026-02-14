@@ -1,0 +1,35 @@
+# Mason - Task Compiler + Provider Orchestrator Dependencies
+
+# Configuration
+PyYAML>=6.0
+
+# HTTP clients
+httpx>=0.25.0
+aiohttp>=3.9.0
+
+# Async support
+asyncio>=3.4.3
+
+# CLI tools
+click>=8.1.0
+
+# Process management (for CLI providers)
+subprocess32>=3.5.4;python_version<"3.5"
+
+# Logging
+structlog>=23.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# JSON Schema validation
+jsonschema>=4.0.0
+
+# RabbitMQ (optional)
+pika>=1.3.0
+
+# Retry logic
+tenacity>=8.0.0
+
+# Ollama client (optional)
+ollama>=0.1.0

@@ -1,0 +1,45 @@
+# Mason Configuration
+# Copy to config.yaml and edit values
+
+mason:
+  # DevBacklog API (source of stories)
+  devbacklog:
+    api_url: "http://dev.elasticgun.com:8485/api"
+    poll_interval_seconds: 60
+
+  # QAQueue API (task destination + stats)
+  qaqueue:
+    api_url: "http://qa.elasticgun.com:8008/api"
+
+  # Task decomposition settings
+  decomposition:
+    max_tasks_per_story: 10
+    default_max_attempts: 3
+    default_timeout_seconds: 300
+
+  # Provider selection
+  provider_selection:
+    # Strategy: "priority" | "round_robin" | "least_failures" | "smart"
+    strategy: "smart"
+    
+    # Cooldown after rate limit (seconds)
+    rate_limit_cooldown: 300
+    
+    # Prefer local providers when queue depth exceeds this
+    high_load_threshold: 50
+
+  # Artifacts
+  artifacts:
+    root: "/srv/ccdf/artifacts"
+
+  # Event bus (optional RabbitMQ integration)
+  events:
+    enabled: false
+    host: "localhost"
+    port: 5672
+    exchange: "ccdf.events"
+
+  # Logging
+  logs:
+    root: "./logs"
+    level: "INFO"

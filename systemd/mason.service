@@ -1,0 +1,18 @@
+[Unit]
+Description=Mason Task Compiler and Provider Orchestrator
+After=network.target
+
+[Service]
+Type=simple
+User=mason
+Group=mason
+WorkingDirectory=/opt/mason
+ExecStart=/opt/mason/venv/bin/python /opt/mason/bin/mason_daemon.py
+Restart=always
+RestartSec=30
+
+# Environment
+EnvironmentFile=/opt/mason/.env
+
+[Install]
+WantedBy=multi-user.target
