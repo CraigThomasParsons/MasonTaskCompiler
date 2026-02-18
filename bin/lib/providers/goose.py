@@ -33,8 +33,8 @@ class GooseProvider(BaseProvider):
         start_time = time.time()
 
         try:
-            # Create working directory
-            work_dir = self._create_work_dir(task_id)
+            work_dir = self._resolve_work_dir(task_packet, task_id)
+            before = self._git_status(work_dir)
 
             # Write task packet as context
             task_file = work_dir / "task.json"
@@ -57,7 +57,7 @@ class GooseProvider(BaseProvider):
 
             # Parse result
             if result.returncode == 0:
-                files_modified = self._detect_modified_files(work_dir)
+                files_modified = self._detect_modified_files(work_dir, before)
                 return ArtifactBundle(
                     task_id=task_id,
                     provider=self.name,
@@ -126,6 +126,13 @@ class GooseProvider(BaseProvider):
         work_dir.mkdir(exist_ok=True)
         return work_dir
 
+    def _resolve_work_dir(self, task_packet: Dict[str, Any], task_id: str) -> Path:
+        project_context = task_packet.get('inputs', {}).get('project_context', {}) or {}
+        target = project_context.get('local_location') or project_context.get('code_folder')
+        if target and Path(target).exists():
+            return Path(target)
+        return self._create_work_dir(task_id)
+
     def _build_prompt(self, task_packet: Dict[str, Any]) -> str:
         """Build Goose prompt from task packet."""
         goal = task_packet.get('goal', {})
@@ -155,14 +162,51 @@ class GooseProvider(BaseProvider):
             for guidance in inputs['retry_guidance']:
                 prompt_parts.append(f"- {guidance}")
 
+        project_context = inputs.get('project_context', {}) or {}
+        if project_context:
+            prompt_parts.append("")
+            prompt_parts.append("## Project Context")
+            prompt_parts.append(f"- Local Location: {project_context.get('local_location') or project_context.get('code_folder')}")
+            prompt_parts.append(f"- GitHub Repo: {project_context.get('github_repo')}")
+            prompt_parts.append(f"- Framework: {project_context.get('framework_description')}")
+            prompt_parts.append(f"- Languages: {project_context.get('languages')}")
+
+        prompt_parts.extend([
+            "",
+            "## Required Execution Method",
+            "- Follow TYS loop for each small task: implement, test, fix/retest.",
+            "- Edit code directly in the working directory.",
+            "- Run project tests to the best of your ability.",
+            "- Append concise notes to docs/thoughts.md with what changed and why.",
+        ])
+
         return "\n".join(prompt_parts)
 
-    def _detect_modified_files(self, work_dir: Path) -> list:
-        """Detect files modified in working directory."""
-        # In practice, this would use git diff or file timestamps
-        # For now, list all non-hidden files
-        return [
-            str(f.relative_to(work_dir))
-            for f in work_dir.rglob('*')
-            if f.is_file() and not f.name.startswith('.')
-        ]
+    def _git_status(self, work_dir: Path) -> str:
+        try:
+            result = subprocess.run(
+                ['git', 'status', '--porcelain'],
+                cwd=str(work_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            return result.stdout
+        except Exception:
+            return ''
+
+    def _detect_modified_files(self, work_dir: Path, before: str) -> list:
+        try:
+            result = subprocess.run(
+                ['git', 'status', '--porcelain'],
+                cwd=str(work_dir),
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            before_set = set(line.strip() for line in before.splitlines() if line.strip())
+            after_set = set(line.strip() for line in result.stdout.splitlines() if line.strip())
+            changed = sorted(after_set - before_set)
+            return [line[3:] for line in changed if len(line) > 3]
+        except Exception:
+            return []
