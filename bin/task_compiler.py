@@ -6,6 +6,7 @@ import uuid
 import structlog
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+from pathlib import Path
 
 from lib.config import Config
 from lib.backlog_client import Story
@@ -44,18 +45,17 @@ class TaskCompiler:
         """
         criteria = self._parse_acceptance_criteria(story.acceptance_criteria)
 
-        if len(criteria) <= 3:
-            # Simple story - single task
-            return [self._create_task_packet(story, criteria)]
+        if not criteria:
+            return [self._create_task_packet(story, ["Implement story behavior and verify expected result."])]
 
-        # Complex story - decompose by criteria groups
+        # Always decompose into low-effort tasks: one acceptance criterion per task.
         tasks = []
-        for i in range(0, len(criteria), 3):
-            group = criteria[i:i+3]
-            if len(tasks) < self.max_tasks:
-                tasks.append(self._create_task_packet(
-                    story, group, task_index=i // 3
-                ))
+        for i, criterion in enumerate(criteria):
+            if len(tasks) >= self.max_tasks:
+                break
+            tasks.append(self._create_task_packet(
+                story, [criterion], task_index=i
+            ))
 
         logger.info(
             "story_decomposed",
@@ -92,13 +92,14 @@ class TaskCompiler:
             },
             "constraints": {
                 "file_scope": self._infer_file_scope(story),
-                "style_rules": [],
+                "style_rules": self._resolve_style_rules(story),
                 "forbidden": [],
             },
             "inputs": {
-                "context_files": [],
+                "context_files": self._resolve_context_files(story),
                 "dependencies": [],
                 "retry_guidance": [],
+                "project_context": story.project or {},
             },
             "execution": {
                 "max_attempts": self.default_max_attempts,
@@ -144,6 +145,53 @@ class TaskCompiler:
         # This would use NLP/patterns in production
         # For now, return empty
         return []
+
+    def _resolve_context_files(self, story: Story) -> List[str]:
+        project = story.project or {}
+        local_location = project.get('local_location') or project.get('code_folder')
+        if not local_location:
+            return []
+
+        base = Path(local_location)
+        context_path = base / 'context.md'
+        goals_path = base / 'goals.md'
+        files: List[str] = []
+        if context_path.exists():
+            files.append(str(context_path))
+        if goals_path.exists():
+            files.append(str(goals_path))
+        return files
+
+    def _resolve_style_rules(self, story: Story) -> List[str]:
+        project = story.project or {}
+        local_location = project.get('local_location') or project.get('code_folder')
+        candidates: List[Path] = []
+
+        if local_location:
+            base = Path(local_location)
+            candidates.extend([
+                base / 'php_style.md',
+                base / 'docs' / 'php_style.md',
+            ])
+
+        candidates.extend([
+            Path('/home/craigpar/Code/ChatProjects/docs/php_style.md'),
+            Path('/home/craigpar/Code/RTSColonyTerrainGenerator/docs/php_style.md'),
+        ])
+
+        for path in candidates:
+            if path.exists():
+                return [
+                    f'Follow PHP style guide in {path}',
+                    'Apply TYS loop: build one small behavior, test, fix if failing, repeat.',
+                    'Log each iteration in docs/thoughts.md in the target project.',
+                ]
+
+        return [
+            'Use clean Laravel + Blade conventions with consistent naming and guard clauses.',
+            'Apply TYS loop: build one small behavior, test, fix if failing, repeat.',
+            'Log each iteration in docs/thoughts.md in the target project.',
+        ]
 
     def _estimate_complexity(self, story: Story) -> str:
         """Estimate task complexity."""

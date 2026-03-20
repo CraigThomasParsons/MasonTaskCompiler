@@ -78,6 +78,17 @@ class Config:
         return self.get('devbacklog.poll_interval_seconds', 60)
 
     @property
+    def devbacklog_project_id(self) -> Optional[int]:
+        project_id = self.get('devbacklog.project_id')
+        if project_id in (None, ''):
+            return None
+        return int(project_id)
+
+    @property
+    def prefer_current_sprint(self) -> bool:
+        return bool(self.get('devbacklog.prefer_current_sprint', True))
+
+    @property
     def max_tasks_per_story(self) -> int:
         return self.get('decomposition.max_tasks_per_story', 10)
 

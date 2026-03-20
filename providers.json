@@ -4,15 +4,15 @@
     {
       "name": "copilot_codex",
       "priority": 1,
-      "type": "api",
-      "adapter": "copilot_api",
+      "type": "cli",
+      "adapter": "codex_cli",
       "rate_limit_strategy": "detect_http_429",
       "confidence_weight": 1.0,
       "enabled": true,
       "config": {
-        "api_key_env": "COPILOT_API_KEY",
-        "model": "codex-4",
-        "timeout_seconds": 120
+        "executable": "codex",
+        "model": "gpt-5.3-codex",
+        "timeout_seconds": 180
       }
     },
     {
@@ -35,12 +35,12 @@
     },
     {
       "name": "goose_ollama",
-      "priority": 3,
+      "priority": 4,
       "type": "local",
       "adapter": "goose",
       "rate_limit_strategy": "none",
       "confidence_weight": 0.85,
-      "enabled": true,
+      "enabled": false,
       "config": {
         "executable": "goose",
         "model": "qwen2.5-coder:14b",

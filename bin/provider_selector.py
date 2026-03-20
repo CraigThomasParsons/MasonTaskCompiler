@@ -22,6 +22,7 @@ class SelectionContext:
     providers_tried: List[str]
     last_failure_reason: Optional[str]
     is_retry: bool
+    complexity_hint: Optional[str] = None
 
 
 class ProviderSelector:
@@ -79,7 +80,10 @@ class ProviderSelector:
 
         # Check system load
         try:
-            if self.qaqueue.is_high_load(self.config.high_load_threshold):
+            if (
+                context.complexity_hint == 'low'
+                and self.qaqueue.is_high_load(self.config.high_load_threshold)
+            ):
                 local = self.registry.get_local_providers()
                 if local:
                     logger.info(
@@ -91,7 +95,7 @@ class ProviderSelector:
             logger.warning("load_check_failed", error=str(e))
 
         # Score and sort providers
-        scored = self._score_providers(candidates)
+        scored = self._score_providers(candidates, context.complexity_hint)
         scored.sort(key=lambda x: x[1], reverse=True)
 
         selected = scored[0][0]
@@ -107,7 +111,8 @@ class ProviderSelector:
 
     def _score_providers(
         self,
-        providers: List[ProviderDefinition]
+        providers: List[ProviderDefinition],
+        complexity_hint: Optional[str] = None,
     ) -> List[tuple]:
         """Score providers based on priority, success rate, confidence."""
         self._refresh_stats()
@@ -127,8 +132,17 @@ class ProviderSelector:
             # Confidence weight
             confidence = p.confidence_weight
 
+            # Complexity-aware routing:
+            # - low complexity => bias local providers
+            # - high complexity => bias hosted/stronger providers
+            complexity_multiplier = 1.0
+            if complexity_hint == 'low' and p.type == 'local':
+                complexity_multiplier = 1.35
+            elif complexity_hint == 'high' and p.type in ['api', 'cli']:
+                complexity_multiplier = 1.25
+
             # Combined score
-            score = priority_score * success_rate * confidence
+            score = priority_score * success_rate * confidence * complexity_multiplier
 
             scored.append((p, score))
 

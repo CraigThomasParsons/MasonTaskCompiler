@@ -6,6 +6,9 @@ mason:
   devbacklog:
     api_url: "http://dev.elasticgun.com:8485/api"
     poll_interval_seconds: 60
+    prefer_current_sprint: true
+    # Optional: lock Mason to a single project id from DevBacklog projection
+    # project_id: 4
 
   # QAQueue API (task destination + stats)
   qaqueue:
