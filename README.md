@@ -1,6 +1,6 @@
 # Mason: Task Compiler + Provider Orchestrator
 
-Mason is **NOT an AI agent**. Mason is a **strategy layer** that:
+Mason is an AI execution agent centered on planning, decomposition, provider routing, and disciplined task completion. In practice, that means Mason acts as a strategy layer that:
 
 1. Decomposes Stories into Tasks
 2. Selects reasoning backends (providers)
@@ -51,6 +51,17 @@ Mason queries QAQueue API for:
 - Retry patterns (which providers failed on what)
 
 This enables **intelligent routing**, not random dispatch.
+
+### 4. Task-First Execution
+
+Mason should work the way a strong coding agent works:
+- gather context first
+- split work into small verifiable tasks
+- execute one task end-to-end
+- record completion notes in the existing tracking files
+- commit and push after each completed task
+
+See [docs/TYSMethodForMason.md](docs/TYSMethodForMason.md) for the required execution method.
 
 ## Key Principle: Two Failure Layers
 
@@ -206,6 +217,17 @@ python bin/mason_daemon.py
 
 # With systemd
 sudo systemctl start mason
+```
+
+## Mason CLI
+
+```bash
+cd /home/craigpar/Code/Mason
+python3 bin/mason_cli.py provider
+python3 bin/mason_cli.py provider goose --restart
+python3 bin/mason_cli.py restart
+python3 bin/mason_cli.py logs -f
+python3 bin/mason_cli.py status
 ```
 
 ## Configuration
